@@ -82,6 +82,25 @@ impl Default for Name {
     }
 }
 
+/// A seperator for the `Generator`
+pub enum Seperator {
+    /// This represents a seperator of the form `"ADJECTIVE-NOUN"`
+    Dash,
+    /// This represents a seperator of the form `"ADJECTIVE_NOUN"`
+    Underscore,
+    /// This represents no seperator of the form `"ADJECTIVENOUN"`
+    None,
+}
+impl std::fmt::Display for Seperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Seperator::Dash => write!(f, "-"),
+            Seperator::Underscore => write!(f, "_"),
+            Seperator::None => write!(f, ""),
+        }
+    }
+}
+
 /// A random name generator which combines an adjective, a noun, and an
 /// optional number
 ///
@@ -91,6 +110,7 @@ pub struct Generator<'a> {
     adjectives: &'a [&'a str],
     nouns: &'a [&'a str],
     naming: Name,
+    seperator: Seperator,
     rng: ThreadRng,
 }
 
@@ -105,16 +125,18 @@ impl<'a> Generator<'a> {
     /// let adjectives = &["sassy"];
     /// let nouns = &["clocks"];
     /// let naming = Name::Plain;
+    /// let seperator = Seperator::Dash;
     ///
-    /// let mut generator = Generator::new(adjectives, nouns, naming);
+    /// let mut generator = Generator::new(adjectives, nouns, naming, seperator);
     ///
     /// assert_eq!("sassy-clocks", generator.next().unwrap());
     /// ```
-    pub fn new(adjectives: &'a [&'a str], nouns: &'a [&'a str], naming: Name) -> Self {
+    pub fn new(adjectives: &'a [&'a str], nouns: &'a [&'a str], naming: Name, seperator: Seperator) -> Self {
         Generator {
             adjectives,
             nouns,
             naming,
+            seperator,
             rng: ThreadRng::default(),
         }
     }
@@ -123,20 +145,20 @@ impl<'a> Generator<'a> {
     /// collection of adjectives and nouns
     ///
     /// ```
-    /// use names::{Generator, Name};
+    /// use names::{Generator, Name, Seperator};
     ///
-    /// let mut generator = Generator::with_naming(Name::Plain);
+    /// let mut generator = Generator::custom(Name::Plain, Seperator::Dash);
     ///
     /// println!("My new name is: {}", generator.next().unwrap());
     /// ```
-    pub fn with_naming(naming: Name) -> Self {
-        Generator::new(ADJECTIVES, NOUNS, naming)
+    pub fn custom(naming: Name, seperator: Seperator) -> Self {
+        Generator::new(ADJECTIVES, NOUNS, naming, seperator)
     }
 }
 
 impl<'a> Default for Generator<'a> {
     fn default() -> Self {
-        Generator::new(ADJECTIVES, NOUNS, Name::default())
+        Generator::new(ADJECTIVES, NOUNS, Name::default(), Seperator::Dash)
     }
 }
 
@@ -146,10 +168,11 @@ impl<'a> Iterator for Generator<'a> {
     fn next(&mut self) -> Option<String> {
         let adj = self.adjectives.choose(&mut self.rng).unwrap();
         let noun = self.nouns.choose(&mut self.rng).unwrap();
+        let seperator = &self.seperator;
 
         Some(match self.naming {
-            Name::Plain => format!("{}-{}", adj, noun),
-            Name::Numbered => format!("{}-{}-{:04}", adj, noun, rand_num(&mut self.rng)),
+            Name::Plain => format!("{}{seperator}{}", adj, noun),
+            Name::Numbered => format!("{}{seperator}{}{seperator}{:04}", adj, noun, rand_num(&mut self.rng)),
         })
     }
 }

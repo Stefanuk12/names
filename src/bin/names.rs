@@ -1,9 +1,9 @@
-use names::Generator;
+use names::{Generator, Seperator};
 
 fn main() {
     let args = cli::parse();
 
-    Generator::with_naming(args.naming())
+    Generator::custom(args.naming(), Seperator::Dash)
         .take(args.amount)
         .for_each(|name| println!("{}", name));
 }
