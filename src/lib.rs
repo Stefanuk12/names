@@ -114,6 +114,7 @@ pub struct Generator<'a> {
     nouns: &'a [&'a str],
     naming: Name,
     seperator: Seperator,
+    max_length: usize,
     rng: ThreadRng,
 }
 
@@ -134,12 +135,13 @@ impl<'a> Generator<'a> {
     ///
     /// assert_eq!("sassy-clocks", generator.next().unwrap());
     /// ```
-    pub fn new(adjectives: &'a [&'a str], nouns: &'a [&'a str], naming: Name, seperator: Seperator) -> Self {
+    pub fn new(adjectives: &'a [&'a str], nouns: &'a [&'a str], naming: Name, seperator: Seperator, max_length: usize) -> Self {
         Generator {
             adjectives,
             nouns,
             naming,
             seperator,
+            max_length,
             rng: ThreadRng::default(),
         }
     }
@@ -150,18 +152,18 @@ impl<'a> Generator<'a> {
     /// ```
     /// use names::{Generator, Name, Seperator};
     ///
-    /// let mut generator = Generator::custom(Name::Plain, Seperator::Dash);
+    /// let mut generator = Generator::custom(Name::Plain, Seperator::Dash, 25);
     ///
     /// println!("My new name is: {}", generator.next().unwrap());
     /// ```
-    pub fn custom(naming: Name, seperator: Seperator) -> Self {
-        Generator::new(ADJECTIVES, NOUNS, naming, seperator)
+    pub fn custom(naming: Name, seperator: Seperator, max_length: usize) -> Self {
+        Generator::new(ADJECTIVES, NOUNS, naming, seperator, max_length)
     }
 }
 
 impl<'a> Default for Generator<'a> {
     fn default() -> Self {
-        Generator::new(ADJECTIVES, NOUNS, Name::default(), Seperator::Dash)
+        Generator::new(ADJECTIVES, NOUNS, Name::default(), Seperator::Dash, 25)
     }
 }
 
@@ -173,10 +175,13 @@ impl<'a> Iterator for Generator<'a> {
         let noun = self.nouns.choose(&mut self.rng).unwrap();
         let seperator = &self.seperator;
 
-        Some(match self.naming {
+        let mut generated = match self.naming {
             Name::Plain => format!("{}{seperator}{}", adj, noun),
             Name::Numbered => format!("{}{seperator}{}{seperator}{:04}", adj, noun, rand_num(&mut self.rng)),
-        })
+        };
+        
+        generated.truncate(self.max_length);
+        Some(generated)
     }
 }
 

@@ -3,7 +3,7 @@ use names::{Generator, Seperator};
 fn main() {
     let args = cli::parse();
 
-    Generator::custom(args.naming(), Seperator::Dash)
+    Generator::custom(args.naming(), Seperator::Dash, 25)
         .take(args.amount)
         .for_each(|name| println!("{}", name));
 }
