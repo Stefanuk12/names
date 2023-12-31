@@ -379,7 +379,6 @@ glue
 goat
 gold
 goldfish
-good-bye
 goose
 government
 governor
