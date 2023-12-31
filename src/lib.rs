@@ -88,6 +88,8 @@ pub enum Seperator {
     Dash,
     /// This represents a seperator of the form `"ADJECTIVE_NOUN"`
     Underscore,
+    /// A custom seperator
+    Custom(&'static str),
     /// This represents no seperator of the form `"ADJECTIVENOUN"`
     None,
 }
@@ -96,6 +98,7 @@ impl std::fmt::Display for Seperator {
         match self {
             Seperator::Dash => write!(f, "-"),
             Seperator::Underscore => write!(f, "_"),
+            Seperator::Custom(s) => write!(f, "{}", s),
             Seperator::None => write!(f, ""),
         }
     }
