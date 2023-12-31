@@ -69,6 +69,7 @@
 
 use derive_builder::Builder;
 use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
+use serde::{Serialize, Deserialize};
 
 /// List of English adjective words
 pub const ADJECTIVES: &[&str] = &include!(concat!(env!("OUT_DIR"), "/adjectives.rs"));
@@ -77,43 +78,44 @@ pub const ADJECTIVES: &[&str] = &include!(concat!(env!("OUT_DIR"), "/adjectives.
 pub const NOUNS: &[&str] = &include!(concat!(env!("OUT_DIR"), "/nouns.rs"));
 
 /// A naming strategy for the [`Generator`]
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum Name {
+#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum Name<'a> {
     /// This represents a plain naming strategy of the form `"ADJECTIVE-NOUN"`
     Plain,
     /// This represents a naming strategy with a random number appended to the
     /// end, of the form `"ADJECTIVE-NOUN{seperator}NUMBER"`
-    Numbered(usize, NumberSeperator),
+    Numbered(usize, #[serde(borrow)] NumberSeperator<'a>),
     /// This represents a naming strategy with a zero-padded number appended to
     /// the end, of the form `"ADJECTIVE-NOUN{seperator}NUMBER"`
-    ZeroPaddedNumbered(usize, NumberSeperator),
+    ZeroPaddedNumbered(usize, #[serde(borrow)] NumberSeperator<'a>),
 }
 
-impl Default for Name {
+impl Default for Name<'_> {
     fn default() -> Self {
         Name::Plain
     }
 }
 
 /// A seperator for the [`Generator`]. This is only applied if there are any digits on the end or within certain [`Casing`]s.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum NumberSeperator {
+#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum NumberSeperator<'a> {
     /// This represents a seperator of the form `"ADJECTIVE-NOUN"`
     Dash,
     /// This represents a seperator of the form `"ADJECTIVE_NOUN"`
     Underscore,
     /// A custom seperator
-    Custom(&'static str),
+    #[serde(borrow)]
+    Custom(&'a str),
     /// This represents no seperator of the form `"ADJECTIVENOUN"`
     None,
 }
 
-impl Default for NumberSeperator {
+impl Default for NumberSeperator<'_> {
     fn default() -> Self {
         NumberSeperator::Dash
     }
 }
-impl std::fmt::Display for NumberSeperator {
+impl std::fmt::Display for NumberSeperator<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             NumberSeperator::Dash => write!(f, "-"),
@@ -125,7 +127,7 @@ impl std::fmt::Display for NumberSeperator {
 }
 
 /// A length for the [`Generator`]
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum Length {
     /// This forces the generator to truncate the generated name to the given length.
     Truncate(usize),
@@ -141,18 +143,18 @@ impl Default for Length {
 }
 
 /// A casing style for the [`Generator`]
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum Casing {
+#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum Casing<'a> {
     /// This represents a casing style of the form `"adjective-noun"`
-    Lowercase(NumberSeperator),
+    Lowercase(#[serde(borrow)] NumberSeperator<'a>),
     /// This represents a casing style of the form `"ADJECTIVE-NOUN"`
-    Uppercase(NumberSeperator),
+    Uppercase(#[serde(borrow)] NumberSeperator<'a>),
     /// This represents a casing style of the form `"Adjective-Noun"`
-    Capitalize(NumberSeperator),
+    Capitalize(#[serde(borrow)] NumberSeperator<'a>),
     /// This represents a casing style of the form `"Adjective-noun"`
-    CapitalizeFirst(NumberSeperator),
+    CapitalizeFirst(#[serde(borrow)] NumberSeperator<'a>),
     /// This represents a casing style of the form `"adjective-Noun"`
-    CapitalizeLast(NumberSeperator),
+    CapitalizeLast(#[serde(borrow)] NumberSeperator<'a>),
     /// This represents a casing style of the form `"adjective_noun"`
     SnakeCase,
     /// This represents a casing style of the form `"ADJECTIVE_NOUN"`
@@ -167,12 +169,12 @@ pub enum Casing {
     ScreamingKebabCase,
 }
 
-impl Default for Casing {
+impl Default for Casing<'_> {
     fn default() -> Self {
         Casing::Lowercase(NumberSeperator::Dash)
     }
 }
-impl Casing {
+impl Casing<'_> {
     /// Returns the seperator for the casing style
     pub fn seperator(&self) -> String {
         match self {
@@ -263,6 +265,13 @@ impl Casing {
     }
 }
 
+fn adjectives<'a>() -> Vec<&'a str> {
+    ADJECTIVES.into()
+}
+fn nouns<'a>() -> Vec<&'a str> {
+    NOUNS.into()
+}
+
 /// A random name generator which combines an adjective, a noun, and an
 /// optional number
 ///
@@ -272,24 +281,33 @@ impl Casing {
 /// To generate a [`Generator`], use [`GeneratorBuilder`], view the [examples](crate#examples) for more information.
 /// 
 /// **NOTE**: You may safely unwrap the result of [`GeneratorBuilder::build`](crate::GeneratorBuilder::build) as the builder will always return a valid [`Generator`].
-#[derive(Builder, Clone, Debug)]
+#[derive(Serialize, Deserialize, Builder, Clone, Debug)]
 pub struct Generator<'a> {
     /// A slice of adjective words
-    #[builder(default = "ADJECTIVES")]
-    adjectives: &'a [&'a str],
+    #[builder(default = "ADJECTIVES.into()")]
+    #[serde(default = "adjectives")]
+    #[serde(borrow)]
+    adjectives: Vec<&'a str>,
     /// A slice of noun words
-    #[builder(default = "NOUNS")]
-    nouns: &'a [&'a str],
+    #[builder(default = "NOUNS.into()")]
+    #[serde(default = "nouns")]
+    #[serde(borrow)]
+    nouns: Vec<&'a str>,
     /// A naming strategy
     #[builder(default)]
-    naming: Name,
+    #[serde(default)]
+    naming: Name<'a>,
     #[builder(default)]
+    #[serde(default)]
     /// The casing to use.
-    casing: Casing,
+    casing: Casing<'a>,
     /// The maximum length of the generated name
     #[builder(default)]
+    #[serde(default)]
     length: Length,
-    #[builder(default = "ThreadRng::default()")]
+    #[builder(default)]
+    #[serde(skip)]
+    #[serde(default)]
     /// The random number generator
     rng: ThreadRng,
 }
