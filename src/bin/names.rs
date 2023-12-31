@@ -1,9 +1,13 @@
-use names::{Generator, Seperator};
+use names::{Seperator, GeneratorBuilder};
 
 fn main() {
     let args = cli::parse();
 
-    Generator::custom(args.naming(), Seperator::Dash, 25)
+    GeneratorBuilder::default()
+        .seperator(Seperator::Dash)
+        .naming(args.naming())
+        .build()
+        .unwrap()
         .take(args.amount)
         .for_each(|name| println!("{}", name));
 }
@@ -25,7 +29,7 @@ mod cli {
     pub(crate) struct Args {
         /// Adds a random number to the name(s)
         #[clap(short, long)]
-        pub(crate) number: bool,
+        pub(crate) number: Option<usize>,
 
         /// Number of names to generate
         #[clap(default_value = "1", rename_all = "screaming_snake_case")]
@@ -34,8 +38,8 @@ mod cli {
 
     impl Args {
         pub(crate) fn naming(&self) -> Name {
-            if self.number {
-                Name::Numbered
+            if let Some(number) = self.number {
+                Name::Numbered(number)
             } else {
                 Name::default()
             }
