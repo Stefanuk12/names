@@ -1,8 +1,10 @@
+use names::{GeneratorBuilder, Name, Length, Casing, NumberSeperator};
+
 fn main() {
-    let mut generated = names::GeneratorBuilder::default()
-        .seperator(names::Seperator::Underscore)
-        .naming(names::Name::ZeroPaddedNumbered(2))
-        .length(names::Length::Truncate(10))
+    let mut generated = GeneratorBuilder::default()
+        .casing(Casing::CamelCase)
+        .naming(Name::ZeroPaddedNumbered(2, NumberSeperator::Underscore))
+        .length(Length::Truncate(20))
         .build()
         .unwrap(); // this can safely be unwrapped as the builder will always return a valid generator
 

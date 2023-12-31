@@ -1,10 +1,9 @@
-use names::{Seperator, GeneratorBuilder};
+use names::GeneratorBuilder;
 
 fn main() {
     let args = cli::parse();
 
     GeneratorBuilder::default()
-        .seperator(Seperator::Dash)
         .naming(args.naming())
         .build()
         .unwrap()
@@ -14,7 +13,7 @@ fn main() {
 
 mod cli {
     use clap::Parser;
-    use names::Name;
+    use names::{Name, NumberSeperator};
 
     const AUTHOR: &str = concat!(env!("CARGO_PKG_AUTHORS"), "\n\n");
     const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -39,7 +38,7 @@ mod cli {
     impl Args {
         pub(crate) fn naming(&self) -> Name {
             if let Some(number) = self.number {
-                Name::Numbered(number)
+                Name::Numbered(number, NumberSeperator::Dash)
             } else {
                 Name::default()
             }

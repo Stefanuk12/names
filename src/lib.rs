@@ -76,17 +76,17 @@ pub const ADJECTIVES: &[&str] = &include!(concat!(env!("OUT_DIR"), "/adjectives.
 /// List of English noun words
 pub const NOUNS: &[&str] = &include!(concat!(env!("OUT_DIR"), "/nouns.rs"));
 
-/// A naming strategy for the `Generator`
+/// A naming strategy for the [`Generator`]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum Name {
     /// This represents a plain naming strategy of the form `"ADJECTIVE-NOUN"`
     Plain,
     /// This represents a naming strategy with a random number appended to the
-    /// end, of the form `"ADJECTIVE-NOUN-NUMBER"`
-    Numbered(usize),
+    /// end, of the form `"ADJECTIVE-NOUN{seperator}NUMBER"`
+    Numbered(usize, NumberSeperator),
     /// This represents a naming strategy with a zero-padded number appended to
-    /// the end, of the form `"ADJECTIVE-NOUN-NUMBER"`
-    ZeroPaddedNumbered(usize),
+    /// the end, of the form `"ADJECTIVE-NOUN{seperator}NUMBER"`
+    ZeroPaddedNumbered(usize, NumberSeperator),
 }
 
 impl Default for Name {
@@ -95,9 +95,9 @@ impl Default for Name {
     }
 }
 
-/// A seperator for the `Generator`
+/// A seperator for the [`Generator`]. This is only applied if there are any digits on the end or within certain [`Casing`]s.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum Seperator {
+pub enum NumberSeperator {
     /// This represents a seperator of the form `"ADJECTIVE-NOUN"`
     Dash,
     /// This represents a seperator of the form `"ADJECTIVE_NOUN"`
@@ -108,23 +108,23 @@ pub enum Seperator {
     None,
 }
 
-impl Default for Seperator {
+impl Default for NumberSeperator {
     fn default() -> Self {
-        Seperator::Dash
+        NumberSeperator::Dash
     }
 }
-impl std::fmt::Display for Seperator {
+impl std::fmt::Display for NumberSeperator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Seperator::Dash => write!(f, "-"),
-            Seperator::Underscore => write!(f, "_"),
-            Seperator::Custom(s) => write!(f, "{}", s),
-            Seperator::None => write!(f, ""),
+            NumberSeperator::Dash => write!(f, "-"),
+            NumberSeperator::Underscore => write!(f, "_"),
+            NumberSeperator::Custom(s) => write!(f, "{}", s),
+            NumberSeperator::None => write!(f, ""),
         }
     }
 }
 
-/// A length for the `Generator`
+/// A length for the [`Generator`]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum Length {
     /// This forces the generator to truncate the generated name to the given length.
@@ -137,6 +137,129 @@ pub enum Length {
 impl Default for Length {
     fn default() -> Self {
         Length::None
+    }
+}
+
+/// A casing style for the [`Generator`]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum Casing {
+    /// This represents a casing style of the form `"adjective-noun"`
+    Lowercase(NumberSeperator),
+    /// This represents a casing style of the form `"ADJECTIVE-NOUN"`
+    Uppercase(NumberSeperator),
+    /// This represents a casing style of the form `"Adjective-Noun"`
+    Capitalize(NumberSeperator),
+    /// This represents a casing style of the form `"Adjective-noun"`
+    CapitalizeFirst(NumberSeperator),
+    /// This represents a casing style of the form `"adjective-Noun"`
+    CapitalizeLast(NumberSeperator),
+    /// This represents a casing style of the form `"adjective_noun"`
+    SnakeCase,
+    /// This represents a casing style of the form `"ADJECTIVE_NOUN"`
+    ScreamingSnakeCase,
+    /// This represents a casing style of the form `"adjectiveNoun"`
+    CamelCase,
+    /// This represents a casing style of the form `"AdjectiveNoun"`
+    PascalCase,
+    /// This represents a casing style of the form `"adjective-noun"`
+    KebabCase,
+    /// This represents a casing style of the form `"ADJECTIVE-NOUN"`
+    ScreamingKebabCase,
+}
+
+impl Default for Casing {
+    fn default() -> Self {
+        Casing::Lowercase(NumberSeperator::Dash)
+    }
+}
+impl Casing {
+    /// Returns the seperator for the casing style
+    pub fn seperator(&self) -> String {
+        match self {
+            Casing::Lowercase(seperator) => seperator.to_string(),
+            Casing::Uppercase(seperator) => seperator.to_string(),
+            Casing::Capitalize(seperator) => seperator.to_string(),
+            Casing::CapitalizeFirst(seperator) => seperator.to_string(),
+            Casing::CapitalizeLast(seperator) => seperator.to_string(),
+            Casing::SnakeCase => "_".to_string(),
+            Casing::ScreamingSnakeCase => "_".to_string(),
+            Casing::CamelCase => "".to_string(),
+            Casing::PascalCase => "".to_string(),
+            Casing::KebabCase => "-".to_string(),
+            Casing::ScreamingKebabCase => "-".to_string(),
+        }
+    }
+
+    /// Applies the casing style to the given words
+    pub fn apply(&self, words: Vec<&str>) -> String {
+        match self {
+            Casing::Lowercase(seperator) => words.join(seperator.to_string().as_str()).to_lowercase(),
+            Casing::Uppercase(seperator) => words.join(seperator.to_string().as_str()).to_uppercase(),
+            Casing::Capitalize(seperator) => words
+                .into_iter()
+                .map(|word| {
+                    let mut c = word.chars();
+                    match c.next() {
+                        None => String::new(),
+                        Some(f) => f.to_uppercase().collect::<String>() + c.as_str().to_lowercase().as_str(),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(seperator.to_string().as_str()),
+            Casing::CapitalizeFirst(seperator) => words
+                .into_iter()
+                .enumerate()
+                .map(|(i, word)| {
+                    if i == 0 {
+                        let mut c = word.chars();
+                        match c.next() {
+                            None => String::new(),
+                            Some(f) => f.to_uppercase().collect::<String>() + c.as_str().to_lowercase().as_str(),
+                        }
+                    } else {
+                        word.to_lowercase()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(seperator.to_string().as_str()),
+            Casing::CapitalizeLast(seperator) => words
+                .iter()
+                .enumerate()
+                .map(|(i, word)| {
+                    if i == words.len() - 1 {
+                        let mut c = word.chars();
+                        match c.next() {
+                            None => String::new(),
+                            Some(f) => f.to_uppercase().collect::<String>() + c.as_str().to_lowercase().as_str(),
+                        }
+                    } else {
+                        word.to_lowercase()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(seperator.to_string().as_str()),
+            Casing::SnakeCase => words.join("_").to_lowercase(),
+            Casing::ScreamingSnakeCase => words.join("_").to_uppercase(),
+            Casing::CamelCase => words
+                .into_iter()
+                .enumerate()
+                .map(|(i, word)| {
+                    if i == 0 {
+                        word.to_lowercase()
+                    } else {
+                        let mut c = word.chars();
+                        match c.next() {
+                            None => String::new(),
+                            Some(f) => f.to_uppercase().collect::<String>() + c.as_str().to_lowercase().as_str(),
+                        }
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(""),
+            Casing::PascalCase => Casing::Capitalize(NumberSeperator::None).apply(words),
+            Casing::KebabCase => words.join("-").to_lowercase(),
+            Casing::ScreamingKebabCase => words.join("-").to_uppercase(),
+        }
     }
 }
 
@@ -161,8 +284,8 @@ pub struct Generator<'a> {
     #[builder(default)]
     naming: Name,
     #[builder(default)]
-    /// A seperator
-    seperator: Seperator,
+    /// The casing to use.
+    casing: Casing,
     /// The maximum length of the generated name
     #[builder(default)]
     length: Length,
@@ -183,12 +306,12 @@ impl<'a> Iterator for Generator<'a> {
     fn next(&mut self) -> Option<String> {
         let adj = self.adjectives.choose(&mut self.rng).unwrap();
         let noun = self.nouns.choose(&mut self.rng).unwrap();
-        let seperator = &self.seperator;
+        let combined = self.casing.apply(vec![adj, noun]);
 
         let mut generated = match self.naming {
-            Name::Plain => format!("{}{seperator}{}", adj, noun),
-            Name::Numbered(x) => format!("{}{seperator}{}{seperator}{}", adj, noun, generate_number_with_x_digits(x, &mut self.rng)),
-            Name::ZeroPaddedNumbered(x) => format!("{}{seperator}{}{seperator}{}", adj, noun, generate_padded_number_with_x_digits(x, &mut self.rng)),
+            Name::Plain => combined,
+            Name::Numbered(x, num_sep) => format!("{combined}{num_sep}{}", generate_number_with_x_digits(x, &mut self.rng)),
+            Name::ZeroPaddedNumbered(x, num_sep) => format!("{combined}{num_sep}{}", generate_padded_number_with_x_digits(x, &mut self.rng)),
         };
         
         Some(match self.length {
