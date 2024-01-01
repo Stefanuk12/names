@@ -69,8 +69,9 @@
 
 use core::{fmt, str::FromStr, convert::{Infallible, TryFrom}};
 
-use derive_builder::Builder;
-use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
+use derive_builder::{Builder, UninitializedFieldError};
+use rand::{seq::SliceRandom, Rng};
+pub use rand::rngs::*;
 use serde::{Serialize, Deserialize, Deserializer};
 
 /// List of English adjective words
@@ -310,11 +311,11 @@ impl Casing {
     }
 }
 
-fn adjectives<'a>() -> Vec<&'a str> {
-    ADJECTIVES.into()
+fn adjectives<'a>() -> Vec<String> {
+    ADJECTIVES.iter().map(|s| s.to_string()).collect()
 }
-fn nouns<'a>() -> Vec<&'a str> {
-    NOUNS.into()
+fn nouns<'a>() -> Vec<String> {
+    NOUNS.iter().map(|s| s.to_string()).collect()
 }
 
 /// All of the errors for this crate.
@@ -333,8 +334,74 @@ pub enum Error {
     #[error("nouns must not be empty")]
     NounsEmpty,
 }
+impl From<UninitializedFieldError> for Error {
+    fn from(e: UninitializedFieldError) -> Self { Self::UninitializedField(e.field_name()) }
+}
 impl From<String> for Error {
     fn from(s: String) -> Self { Self::ValidationError(s) }
+}
+
+#[derive(Deserialize)]
+struct GeneratorJson {
+    #[serde(default = "adjectives")]
+    adjectives: Vec<String>,
+    #[serde(default = "nouns")]
+    nouns: Vec<String>,
+    #[serde(default)]
+    naming: Name,
+    #[serde(default)]
+    casing: Casing,
+    #[serde(default)]
+    length: Length,
+}
+impl GeneratorJson {
+    fn thread_rng(self) -> Generator<ThreadRng> {
+        Generator {
+            adjectives: self.adjectives,
+            nouns: self.nouns,
+            naming: self.naming,
+            casing: self.casing,
+            length: self.length,
+            rng: rand::thread_rng(),
+        }
+    }
+
+    fn os_rng(self) -> Generator<OsRng> {
+        Generator {
+            adjectives: self.adjectives,
+            nouns: self.nouns,
+            naming: self.naming,
+            casing: self.casing,
+            length: self.length,
+            rng: OsRng,
+        }
+    }
+
+    fn std_rng(self) -> Generator<StdRng> {
+        use rand::SeedableRng;
+
+        Generator {
+            adjectives: self.adjectives,
+            nouns: self.nouns,
+            naming: self.naming,
+            casing: self.casing,
+            length: self.length,
+            rng: StdRng::from_entropy(),
+        }
+    }
+
+    fn small_rng(self) -> Generator<SmallRng> {
+        use rand::SeedableRng;
+
+        Generator {
+            adjectives: self.adjectives,
+            nouns: self.nouns,
+            naming: self.naming,
+            casing: self.casing,
+            length: self.length,
+            rng: SmallRng::from_entropy(),
+        }
+    }
 }
 
 /// A random name generator which combines an adjective, a noun, and an
@@ -347,19 +414,15 @@ impl From<String> for Error {
 /// 
 /// **NOTE**: You may safely unwrap the result of [`GeneratorBuilder::build`](crate::GeneratorBuilder::build) as the builder will always return a valid [`Generator`],
 /// as long `adjectives` and `nouns` are not empty (use default). However, there is an [`Error`] enum just in case.
-#[derive(Serialize, Deserialize, Builder, Clone, Debug)]
+#[derive(Serialize, Builder, Clone, Debug)]
 #[builder(build_fn(validate = "Self::validate", error = "Error"))]
-pub struct Generator<'a> {
+pub struct Generator<R: Rng> {
     /// A slice of adjective words
-    #[builder(setter(into), default = "ADJECTIVES.into()")]
-    #[serde(default = "adjectives")]
-    #[serde(borrow)]
-    adjectives: Vec<&'a str>,
+    #[builder(setter(into), default = "adjectives()")]
+    pub adjectives: Vec<String>,
     /// A slice of noun words
-    #[builder(setter(into), default = "NOUNS.into()")]
-    #[serde(default = "nouns")]
-    #[serde(borrow)]
-    nouns: Vec<&'a str>,
+    #[builder(setter(into), default = "nouns()")]
+    nouns: Vec<String>,
     /// A naming strategy
     #[builder(setter(into), default)]
     #[serde(default)]
@@ -372,14 +435,42 @@ pub struct Generator<'a> {
     #[builder(setter(into), default)]
     #[serde(default)]
     length: Length,
-    #[builder(setter(into), default)]
+    #[serde(default = "default_rng")]
     #[serde(skip)]
-    #[serde(default)]
     /// The random number generator
-    rng: ThreadRng,
+    rng: R
 }
 
-impl GeneratorBuilder<'_> {
+impl<'de> Deserialize<'de> for Generator<ThreadRng> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'de>
+    {
+        Ok(GeneratorJson::deserialize(deserializer)?.thread_rng())
+    }
+}
+impl<'de> Deserialize<'de> for Generator<OsRng> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'de>
+    {
+        Ok(GeneratorJson::deserialize(deserializer)?.os_rng())
+    }
+}
+impl<'de> Deserialize<'de> for Generator<StdRng> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'de>
+    {
+        Ok(GeneratorJson::deserialize(deserializer)?.std_rng())
+    }
+}
+impl<'de> Deserialize<'de> for Generator<SmallRng> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'de>
+    {
+        Ok(GeneratorJson::deserialize(deserializer)?.small_rng())
+    }
+}
+
+impl<R: Rng> GeneratorBuilder<R> {
     fn validate(&self) -> Result<(), Error> {
         if let Some(adjectives) = &self.adjectives {
             if adjectives.is_empty() {
@@ -395,16 +486,63 @@ impl GeneratorBuilder<'_> {
     }
 }
 
-impl<'a> Default for Generator<'a> {
+impl Default for Generator<ThreadRng> {
     fn default() -> Self {
-        GeneratorBuilder::default().build().unwrap()
+        Self {
+            adjectives: adjectives(),
+            nouns: nouns(),
+            naming: Name::Plain,
+            casing: Casing::Lowercase(NumberSeperator::Dash),
+            length: Length::None,
+            rng: rand::thread_rng(),
+        }
+    }
+}
+impl Default for Generator<OsRng> {
+    fn default() -> Self {
+        Self {
+            adjectives: adjectives(),
+            nouns: nouns(),
+            naming: Name::Plain,
+            casing: Casing::Lowercase(NumberSeperator::Dash),
+            length: Length::None,
+            rng: OsRng,
+        }
+    }
+}
+impl Default for Generator<StdRng> {
+    fn default() -> Self {
+        use rand::SeedableRng;
+
+        Self {
+            adjectives: adjectives(),
+            nouns: nouns(),
+            naming: Name::Plain,
+            casing: Casing::Lowercase(NumberSeperator::Dash),
+            length: Length::None,
+            rng: StdRng::from_entropy(),
+        }
+    }
+}
+impl Default for Generator<SmallRng> {
+    fn default() -> Self {
+        use rand::SeedableRng;
+
+        Self {
+            adjectives: adjectives(),
+            nouns: nouns(),
+            naming: Name::Plain,
+            casing: Casing::Lowercase(NumberSeperator::Dash),
+            length: Length::None,
+            rng: SmallRng::from_entropy(),
+        }
     }
 }
 
-impl<'a> Iterator for Generator<'a> {
+impl<R: Rng> Iterator for Generator<R> {
     type Item = String;
 
-    fn next(&mut self) -> Option<String> {
+    fn next(&mut self) -> Option<Self::Item> {
         let adj = self.adjectives.choose(&mut self.rng)?;
         let noun = self.nouns.choose(&mut self.rng)?;
         let combined = self.casing.apply(vec![adj, noun]);
@@ -428,13 +566,13 @@ impl<'a> Iterator for Generator<'a> {
     }
 }
 
-fn generate_number_with_x_digits(x: usize, rng: &mut ThreadRng) -> usize {
+fn generate_number_with_x_digits<R: Rng + ?Sized>(x: usize, rng: &mut R) -> usize {
     let lower_bound = 10usize.pow((x - 1) as u32);
     let upper_bound = 10usize.pow(x as u32) - 1;
     rng.gen_range(lower_bound..=upper_bound)
 }
 
-fn generate_padded_number_with_x_digits(x: usize, rng: &mut ThreadRng) -> String {
+fn generate_padded_number_with_x_digits<R: Rng + ?Sized>(x: usize, rng: &mut R) -> String {
     let number = generate_number_with_x_digits(x, rng);
     format!("{:0>width$}", number, width = x)
 }

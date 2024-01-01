@@ -5,6 +5,7 @@ fn main() {
 
     GeneratorBuilder::default()
         .naming(args.naming())
+        .rng(rand::thread_rng())
         .build()
         .unwrap()
         .take(args.amount)

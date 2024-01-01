@@ -4,6 +4,18 @@
 
 ## [Unreleased] - ReleaseDate
 
+## [0.16.0] - 2024-01-01
+
+> **Breaking Change Upgrade Note For Library Users**
+>
+> The `Generator` struct has been renamed of all lifetimes, using an owned `String` instead.
+> It also requires the `Rng` to be specified, allowing for custom random number generators.
+
+### Changed
+
+- **(breaking):** `Generator` struct's `nouns` and `adjectives` fields are now owned `String` types
+- **(breaking):** `Generator` struct's `rng` field is now a generic `Rng` type
+
 ## [0.15.0] - 2024-01-01
 
 > **Breaking Change Upgrade Note For Library Users**
