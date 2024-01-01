@@ -1,5 +1,3 @@
-// NOTE: Every `.unwrap()` seen here is SAFE, just make sure that `adjectives` and `nouns` are not empty.
-
 use rand::rngs::ThreadRng;
 
 fn main() {

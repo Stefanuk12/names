@@ -1,12 +1,10 @@
-// NOTE: Every `.unwrap()` seen here is SAFE.
+use names::{GeneratorBuilder, Name, NumberSeperator, ThreadRng};
 
-use names::{GeneratorBuilder, Name, NumberSeperator, Generator};
-use rand::rngs::ThreadRng;
-
-fn main() {
-    let mut generator: Generator<ThreadRng> = GeneratorBuilder::default()
+fn main() -> Result<(), names::Error> {
+    let mut generator = GeneratorBuilder::default()
         .naming(Name::ZeroPaddedNumbered(4, NumberSeperator::Dash))
-        .build()
-        .unwrap();
+        .rng(ThreadRng::default())
+        .build()?;
     println!("Your project is: {}", generator.next().unwrap());
+    Ok(())
 }

@@ -1,16 +1,14 @@
-// NOTE: Every `.unwrap()` seen here is SAFE.
+use names::{GeneratorBuilder, ThreadRng};
 
-use names::{GeneratorBuilder, Generator};
-use rand::rngs::ThreadRng;
-
-fn main() {
+fn main() -> Result<(), names::Error>  {
     let adjectives: Vec<String> = vec!["imaginary".into()];
     let nouns: Vec<String> = vec!["roll".into()];
-    let mut generator: Generator<ThreadRng> = GeneratorBuilder::default()
+    let mut generator = GeneratorBuilder::default()
         .adjectives(adjectives)
         .nouns(nouns)
-        .build()
-        .unwrap();
+        .rng(ThreadRng::default())
+        .build()?;
 
     assert_eq!("imaginary-roll", generator.next().unwrap());
+    Ok(())
 }

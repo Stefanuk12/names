@@ -33,12 +33,13 @@
 //! 4-digit number via the builder pattern:
 //!
 //! ```
-//! use names::{GeneratorBuilder, Name, NumberSeperator};
+//! use names::{GeneratorBuilder, Name, NumberSeperator, ThreadRng};
 //!
 //! let mut generator = GeneratorBuilder::default()
 //!     .naming(Name::Numbered(4, NumberSeperator::Dash))
+//!     .rng(ThreadRng::default())
 //!     .build()
-//!     .unwrap(); // this can safely be unwrapped as the builder will always return a valid generator
+//!     .unwrap();
 //! 
 //! println!("Your project is: {}", generator.next().unwrap());
 //! // #=> "Your project is: pushy-pencil-5602"
@@ -51,15 +52,16 @@
 //! this returns only one result:
 //!
 //! ```
-//! use names::{GeneratorBuilder, Name};
+//! use names::{GeneratorBuilder, Name, ThreadRng};
 //!
 //! let adjectives = &["imaginary"];
 //! let nouns = &["roll"];
 //! let mut generator = GeneratorBuilder::default()
 //!     .adjectives(adjectives)
 //!     .nouns(nouns)
+//!     .rng(ThreadRng::default())
 //!     .build()
-//!     .unwrap(); // this can safely be unwrapped as the builder will always return a valid generator
+//!     .unwrap();
 //!
 //! assert_eq!("imaginary-roll", generator.next().unwrap());
 //! ```
@@ -333,6 +335,9 @@ pub enum Error {
     /// Nouns is empty
     #[error("nouns must not be empty")]
     NounsEmpty,
+    /// The iterator was empty
+    #[error("the iterator was empty")]
+    EmptyIterator,
 }
 impl From<UninitializedFieldError> for Error {
     fn from(e: UninitializedFieldError) -> Self { Self::UninitializedField(e.field_name()) }
@@ -411,9 +416,6 @@ impl GeneratorJson {
 /// a naming strategy (with or without a number appended).
 /// 
 /// To generate a [`Generator`], use [`GeneratorBuilder`], view the [examples](crate#examples) for more information.
-/// 
-/// **NOTE**: You may safely unwrap the result of [`GeneratorBuilder::build`](crate::GeneratorBuilder::build) as the builder will always return a valid [`Generator`],
-/// as long `adjectives` and `nouns` are not empty (use default). However, there is an [`Error`] enum just in case.
 #[derive(Serialize, Builder, Clone, Debug)]
 #[builder(build_fn(validate = "Self::validate", error = "Error"))]
 pub struct Generator<R: Rng> {
@@ -435,7 +437,7 @@ pub struct Generator<R: Rng> {
     #[builder(setter(into), default)]
     #[serde(default)]
     length: Length,
-    #[serde(default = "default_rng")]
+    #[serde(default)]
     #[serde(skip)]
     /// The random number generator
     rng: R

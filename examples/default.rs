@@ -1,5 +1,3 @@
-// NOTE: Every `.unwrap()` seen here is SAFE.
-
 use names::{Generator, ThreadRng};
 
 fn main() {

@@ -227,10 +227,11 @@ If more randomness is required, you can generate a name with a trailing 4-digit
 number:
 
 ```rust
-use names::{GeneratorBuilder, Name, NumberSeperator};
+use names::{GeneratorBuilder, Name, NumberSeperator, ThreadRng};
 
 let mut generator = GeneratorBuilder::default()
   .naming(Name::ZeroPaddedNumbered(4, NumberSeperator::Dash))
+  .rng(ThreadRng::default())
   .build()
   .unwrap();
 println!("Your project is: {}", generator.next().unwrap());
@@ -244,13 +245,14 @@ can provide your own by supplying 2 string slices. For example, this returns
 only one result:
 
 ```rust
-use names::GeneratorBuilder;
+use names::{GeneratorBuilder, ThreadRng};
 
 let adjectives = vec!["imaginary"];
 let nouns = vec!["roll"];
 let mut generator = GeneratorBuilder::default()
   .adjectives(adjectives)
   .nouns(nouns)
+  .rng(ThreadRng::default())
   .build()
   .unwrap();
 
