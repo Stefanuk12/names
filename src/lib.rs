@@ -100,25 +100,57 @@ impl Default for Name {
 }
 
 /// A seperator for the [`Generator`]. This is only applied if there are any digits on the end or within certain [`Casing`]s.
-#[derive(EnumString, Display, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum NumberSeperator {
     /// This represents a seperator of the form `"ADJECTIVE-NOUN"`
-    #[strum(serialize = "-")]
     Dash,
     /// This represents a seperator of the form `"ADJECTIVE_NOUN"`
-    #[strum(serialize = "_")]
     Underscore,
     /// A custom seperator
-    #[strum(default)]
     Custom(String),
     /// This represents no seperator of the form `"ADJECTIVENOUN"`
-    #[strum(serialize = "")]
     None,
 }
 
 impl Default for NumberSeperator {
     fn default() -> Self {
         NumberSeperator::Dash
+    }
+}
+impl ::core::str::FromStr for NumberSeperator {
+    type Err = ::strum::ParseError;
+    fn from_str(
+        s: &str,
+    ) -> ::core::result::Result<NumberSeperator, <Self as ::core::str::FromStr>::Err> {
+        ::core::result::Result::Ok(match s {
+            "-" => NumberSeperator::Dash,
+            "_" => NumberSeperator::Underscore,
+            "" => NumberSeperator::None,
+            _ => return ::core::result::Result::Ok(NumberSeperator::Custom(s.into())),
+        })
+    }
+}
+#[allow(clippy::use_self)]
+impl ::core::convert::TryFrom<&str> for NumberSeperator {
+    type Error = ::strum::ParseError;
+    fn try_from(
+        s: &str,
+    ) -> ::core::result::Result<NumberSeperator, <Self as ::core::convert::TryFrom<&str>>::Error>
+    {
+        ::core::str::FromStr::from_str(s)
+    }
+}
+impl ::core::fmt::Display for NumberSeperator {
+    fn fmt(
+        &self,
+        f: &mut ::core::fmt::Formatter,
+    ) -> ::core::result::Result<(), ::core::fmt::Error> {
+        match *self {
+            NumberSeperator::Dash => f.pad("-"),
+            NumberSeperator::Underscore => f.pad("_"),
+            NumberSeperator::Custom(ref s) => f.pad(s),
+            NumberSeperator::None => f.pad(""),
+        }
     }
 }
 impl Serialize for NumberSeperator {
@@ -298,28 +330,28 @@ fn nouns<'a>() -> Vec<&'a str> {
 #[derive(Serialize, Deserialize, Builder, Clone, Debug)]
 pub struct Generator<'a> {
     /// A slice of adjective words
-    #[builder(default = "ADJECTIVES.into()")]
+    #[builder(setter(into), default = "ADJECTIVES.into()")]
     #[serde(default = "adjectives")]
     #[serde(borrow)]
     adjectives: Vec<&'a str>,
     /// A slice of noun words
-    #[builder(default = "NOUNS.into()")]
+    #[builder(setter(into), default = "NOUNS.into()")]
     #[serde(default = "nouns")]
     #[serde(borrow)]
     nouns: Vec<&'a str>,
     /// A naming strategy
-    #[builder(default)]
+    #[builder(setter(into), default)]
     #[serde(default)]
     naming: Name,
-    #[builder(default)]
+    #[builder(setter(into), default)]
     #[serde(default)]
     /// The casing to use.
     casing: Casing,
     /// The maximum length of the generated name
-    #[builder(default)]
+    #[builder(setter(into), default)]
     #[serde(default)]
     length: Length,
-    #[builder(default)]
+    #[builder(setter(into), default)]
     #[serde(skip)]
     #[serde(default)]
     /// The random number generator
