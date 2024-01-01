@@ -33,10 +33,10 @@
 //! 4-digit number via the builder pattern:
 //!
 //! ```
-//! use names::{GeneratorBuilder, Name};
+//! use names::{GeneratorBuilder, Name, NumberSeperator};
 //!
 //! let mut generator = GeneratorBuilder::default()
-//!     .naming(Name::Numbered(4))
+//!     .naming(Name::Numbered(4, NumberSeperator::Dash))
 //!     .build()
 //!     .unwrap(); // this can safely be unwrapped as the builder will always return a valid generator
 //! 
