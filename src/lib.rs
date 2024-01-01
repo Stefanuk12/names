@@ -67,9 +67,12 @@
 #![doc(html_root_url = "https://docs.rs/names/0.14.1-dev")]
 #![deny(missing_docs)]
 
+use std::str::FromStr;
+
 use derive_builder::Builder;
 use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
-use serde::{Serialize, Deserialize};
+use serde::{Serialize, Deserialize, Deserializer};
+use strum::{Display, EnumString};
 
 /// List of English adjective words
 pub const ADJECTIVES: &[&str] = &include!(concat!(env!("OUT_DIR"), "/adjectives.rs"));
@@ -78,51 +81,62 @@ pub const ADJECTIVES: &[&str] = &include!(concat!(env!("OUT_DIR"), "/adjectives.
 pub const NOUNS: &[&str] = &include!(concat!(env!("OUT_DIR"), "/nouns.rs"));
 
 /// A naming strategy for the [`Generator`]
-#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum Name<'a> {
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum Name {
     /// This represents a plain naming strategy of the form `"ADJECTIVE-NOUN"`
     Plain,
     /// This represents a naming strategy with a random number appended to the
     /// end, of the form `"ADJECTIVE-NOUN{seperator}NUMBER"`
-    Numbered(usize, #[serde(borrow)] NumberSeperator<'a>),
+    Numbered(usize, NumberSeperator),
     /// This represents a naming strategy with a zero-padded number appended to
     /// the end, of the form `"ADJECTIVE-NOUN{seperator}NUMBER"`
-    ZeroPaddedNumbered(usize, #[serde(borrow)] NumberSeperator<'a>),
+    ZeroPaddedNumbered(usize, NumberSeperator),
 }
 
-impl Default for Name<'_> {
+impl Default for Name {
     fn default() -> Self {
         Name::Plain
     }
 }
 
 /// A seperator for the [`Generator`]. This is only applied if there are any digits on the end or within certain [`Casing`]s.
-#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum NumberSeperator<'a> {
+#[derive(EnumString, Display, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum NumberSeperator {
     /// This represents a seperator of the form `"ADJECTIVE-NOUN"`
+    #[strum(serialize = "-")]
     Dash,
     /// This represents a seperator of the form `"ADJECTIVE_NOUN"`
+    #[strum(serialize = "_")]
     Underscore,
     /// A custom seperator
-    #[serde(borrow)]
-    Custom(&'a str),
+    #[strum(default)]
+    Custom(String),
     /// This represents no seperator of the form `"ADJECTIVENOUN"`
+    #[strum(serialize = "")]
     None,
 }
 
-impl Default for NumberSeperator<'_> {
+impl Default for NumberSeperator {
     fn default() -> Self {
         NumberSeperator::Dash
     }
 }
-impl std::fmt::Display for NumberSeperator<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Serialize for NumberSeperator {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
         match self {
-            NumberSeperator::Dash => write!(f, "-"),
-            NumberSeperator::Underscore => write!(f, "_"),
-            NumberSeperator::Custom(s) => write!(f, "{}", s),
-            NumberSeperator::None => write!(f, ""),
+            NumberSeperator::Custom(seperator) => serializer.serialize_str(seperator),
+            _ => serializer.serialize_str(self.to_string().as_str()),
         }
+    }
+}
+impl<'de> Deserialize<'de> for NumberSeperator {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where D: Deserializer<'de>
+    {
+        let s = String::deserialize(deserializer)?;
+        FromStr::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
 
@@ -143,18 +157,18 @@ impl Default for Length {
 }
 
 /// A casing style for the [`Generator`]
-#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum Casing<'a> {
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum Casing {
     /// This represents a casing style of the form `"adjective-noun"`
-    Lowercase(#[serde(borrow)] NumberSeperator<'a>),
+    Lowercase(NumberSeperator),
     /// This represents a casing style of the form `"ADJECTIVE-NOUN"`
-    Uppercase(#[serde(borrow)] NumberSeperator<'a>),
+    Uppercase(NumberSeperator),
     /// This represents a casing style of the form `"Adjective-Noun"`
-    Capitalize(#[serde(borrow)] NumberSeperator<'a>),
+    Capitalize(NumberSeperator),
     /// This represents a casing style of the form `"Adjective-noun"`
-    CapitalizeFirst(#[serde(borrow)] NumberSeperator<'a>),
+    CapitalizeFirst(NumberSeperator),
     /// This represents a casing style of the form `"adjective-Noun"`
-    CapitalizeLast(#[serde(borrow)] NumberSeperator<'a>),
+    CapitalizeLast(NumberSeperator),
     /// This represents a casing style of the form `"adjective_noun"`
     SnakeCase,
     /// This represents a casing style of the form `"ADJECTIVE_NOUN"`
@@ -169,12 +183,12 @@ pub enum Casing<'a> {
     ScreamingKebabCase,
 }
 
-impl Default for Casing<'_> {
+impl Default for Casing {
     fn default() -> Self {
         Casing::Lowercase(NumberSeperator::Dash)
     }
 }
-impl Casing<'_> {
+impl Casing {
     /// Returns the seperator for the casing style
     pub fn seperator(&self) -> String {
         match self {
@@ -296,11 +310,11 @@ pub struct Generator<'a> {
     /// A naming strategy
     #[builder(default)]
     #[serde(default)]
-    naming: Name<'a>,
+    naming: Name,
     #[builder(default)]
     #[serde(default)]
     /// The casing to use.
-    casing: Casing<'a>,
+    casing: Casing,
     /// The maximum length of the generated name
     #[builder(default)]
     #[serde(default)]
@@ -326,10 +340,10 @@ impl<'a> Iterator for Generator<'a> {
         let noun = self.nouns.choose(&mut self.rng).unwrap();
         let combined = self.casing.apply(vec![adj, noun]);
 
-        let mut generated = match self.naming {
+        let mut generated = match &self.naming {
             Name::Plain => combined,
-            Name::Numbered(x, num_sep) => format!("{combined}{num_sep}{}", generate_number_with_x_digits(x, &mut self.rng)),
-            Name::ZeroPaddedNumbered(x, num_sep) => format!("{combined}{num_sep}{}", generate_padded_number_with_x_digits(x, &mut self.rng)),
+            Name::Numbered(x, num_sep) => format!("{combined}{num_sep}{}", generate_number_with_x_digits(*x, &mut self.rng)),
+            Name::ZeroPaddedNumbered(x, num_sep) => format!("{combined}{num_sep}{}", generate_padded_number_with_x_digits(*x, &mut self.rng)),
         };
         
         Some(match self.length {
