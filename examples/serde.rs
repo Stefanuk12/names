@@ -9,7 +9,7 @@ fn main() {
         "length": {
             "Truncate": 20
         }
-    }"#).unwrap(); // this can safely be unwrapped as the builder will always return a valid generator
+    }"#).unwrap();
 
     println!("My new name is: {}", generated.next().unwrap());
 }

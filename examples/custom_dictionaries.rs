@@ -9,7 +9,7 @@ fn main() {
         .adjectives(adjectives)
         .nouns(nouns)
         .build()
-        .unwrap(); // this can safely be unwrapped as the builder will always return a valid generator
+        .unwrap();
 
     assert_eq!("imaginary-roll", generator.next().unwrap());
 }
