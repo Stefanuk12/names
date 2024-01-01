@@ -11,9 +11,14 @@
 > The library has changed to use a `Builder` pattern for creating a [`Generator`]
 > instance. This allows for more flexibility in the future.
 
+> **Breaking Change Upgrade Note For CLI Users**
+>
+> The `numbers` flag now accepts a `number` to specify how many digits to use
+
 ### Changed
 
 - **(breaking):** use `Builder` pattern for creating a [`Generator`] instance
+- **(breaking):** `numbers` flag now accepts a `number` to specify how many digits to use
 - remove any adjectives/nouns that included hyphens for easier `Casing` support
 - upgrade rand to `0.8` (instead of `0.8.4`)
 - upgrade clap to `4.4` (instead of `3.1.5`)

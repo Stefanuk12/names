@@ -81,7 +81,7 @@ tender-oatmeal
 Not random enough? How about adding a 4-number pad:
 
 ```console
-> names --number 5
+> names 5 --number 4
 imported-rod-9680
 thin-position-2344
 hysterical-women-5647
