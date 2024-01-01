@@ -30,7 +30,7 @@ rand = "0.8"
 serde = { version = "1.0", features = ["derive"]}
 
 [dev-dependencies]
-serde_json = "1.0.108"
+serde_json = "1.0"
 version-sync = "0.9"
 
 [package.metadata.docs.rs]
