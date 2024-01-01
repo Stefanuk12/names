@@ -1,3 +1,5 @@
+// NOTE: Every `.unwrap()` seen here is SAFE.
+
 use names::{GeneratorBuilder, Name, Length, Casing, NumberSeperator};
 
 fn main() {
@@ -6,7 +8,7 @@ fn main() {
         .naming(Name::ZeroPaddedNumbered(2, NumberSeperator::Underscore))
         .length(Length::Truncate(20))
         .build()
-        .unwrap(); // this can safely be unwrapped as the builder will always return a valid generator
+        .unwrap();
 
     println!("My new name is: {}", generated.next().unwrap());  
 }

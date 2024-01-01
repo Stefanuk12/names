@@ -317,6 +317,26 @@ fn nouns<'a>() -> Vec<&'a str> {
     NOUNS.into()
 }
 
+/// All of the errors for this crate.
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    /// Uninitialized field
+    #[error("uninitialized field: {0}")]
+    UninitializedField(&'static str),
+    /// Custom validation error
+    #[error("validation error: {0}")]
+    ValidationError(String),
+    /// Adjectives is empty
+    #[error("adjectives must not be empty")]
+    AdjectivesEmpty,
+    /// Nouns is empty
+    #[error("nouns must not be empty")]
+    NounsEmpty,
+}
+impl From<String> for Error {
+    fn from(s: String) -> Self { Self::ValidationError(s) }
+}
+
 /// A random name generator which combines an adjective, a noun, and an
 /// optional number
 ///
@@ -325,8 +345,10 @@ fn nouns<'a>() -> Vec<&'a str> {
 /// 
 /// To generate a [`Generator`], use [`GeneratorBuilder`], view the [examples](crate#examples) for more information.
 /// 
-/// **NOTE**: You may safely unwrap the result of [`GeneratorBuilder::build`](crate::GeneratorBuilder::build) as the builder will always return a valid [`Generator`].
+/// **NOTE**: You may safely unwrap the result of [`GeneratorBuilder::build`](crate::GeneratorBuilder::build) as the builder will always return a valid [`Generator`],
+/// as long `adjectives` and `nouns` are not empty (use default). However, there is an [`Error`] enum just in case.
 #[derive(Serialize, Deserialize, Builder, Clone, Debug)]
+#[builder(build_fn(validate = "Self::validate", error = "Error"))]
 pub struct Generator<'a> {
     /// A slice of adjective words
     #[builder(setter(into), default = "ADJECTIVES.into()")]
@@ -357,6 +379,22 @@ pub struct Generator<'a> {
     rng: ThreadRng,
 }
 
+impl GeneratorBuilder<'_> {
+    fn validate(&self) -> Result<(), Error> {
+        if let Some(adjectives) = &self.adjectives {
+            if adjectives.is_empty() {
+                return Err(Error::AdjectivesEmpty);
+            }
+        }
+        if let Some(nouns) = &self.nouns {
+            if nouns.is_empty() {
+                return Err(Error::NounsEmpty);
+            }
+        }
+        Ok(())
+    }
+}
+
 impl<'a> Default for Generator<'a> {
     fn default() -> Self {
         GeneratorBuilder::default().build().unwrap()
@@ -367,8 +405,8 @@ impl<'a> Iterator for Generator<'a> {
     type Item = String;
 
     fn next(&mut self) -> Option<String> {
-        let adj = self.adjectives.choose(&mut self.rng).unwrap();
-        let noun = self.nouns.choose(&mut self.rng).unwrap();
+        let adj = self.adjectives.choose(&mut self.rng)?;
+        let noun = self.nouns.choose(&mut self.rng)?;
         let combined = self.casing.apply(vec![adj, noun]);
 
         let mut generated = match &self.naming {
@@ -381,7 +419,7 @@ impl<'a> Iterator for Generator<'a> {
             Length::Truncate(x) => { generated.truncate(x); generated },
             Length::Reroll(x) => {
                 while generated.len() != x {
-                    generated = self.next().unwrap();
+                    generated = self.next()?;
                 }
                 generated
             },

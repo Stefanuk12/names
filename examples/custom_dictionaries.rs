@@ -1,3 +1,5 @@
+// NOTE: Every `.unwrap()` seen here is SAFE.
+
 use names::GeneratorBuilder;
 
 fn main() {
@@ -7,7 +9,7 @@ fn main() {
         .adjectives(adjectives)
         .nouns(nouns)
         .build()
-        .unwrap();
+        .unwrap(); // this can safely be unwrapped as the builder will always return a valid generator
 
     assert_eq!("imaginary-roll", generator.next().unwrap());
 }
