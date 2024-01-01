@@ -38,7 +38,7 @@ mod cli {
     impl Args {
         pub(crate) fn naming(&self) -> Name {
             if let Some(number) = self.number {
-                Name::Numbered(number, NumberSeperator::Dash)
+                Name::ZeroPaddedNumbered(number, NumberSeperator::Dash)
             } else {
                 Name::default()
             }
