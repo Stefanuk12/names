@@ -4,6 +4,29 @@
 
 ## [Unreleased] - ReleaseDate
 
+## [0.15.0] - 2024-01-01
+
+> **Breaking Change Upgrade Note For Library Users**
+>
+> The library has changed to use a `Builder` pattern for creating a [`Generator`]
+> instance. This allows for more flexibility in the future.
+
+### Changed
+
+- **(breaking):** use `Builder` pattern for creating a [`Generator`] instance
+- remove any adjectives/nouns that included hyphens for easier `Casing` support
+- upgrade rand to `0.8` (instead of `0.8.4`)
+- upgrade clap to `4.4` (instead of `3.1.5`)
+
+### Added
+
+- `serde` support for all types
+- `Casing` enum for controlling the casing of generated names
+- `Name` enum to change how the numbers are generated
+- `NumberSeperator` enum to change how the numbers are separated from the name
+- `Length` to enforce a certain length of the generated name
+- `Error` enum for all error types
+
 ## [0.14.0] - 2022-06-28
 
 ### Changed
