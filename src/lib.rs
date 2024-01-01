@@ -67,12 +67,11 @@
 #![doc(html_root_url = "https://docs.rs/names/0.14.1-dev")]
 #![deny(missing_docs)]
 
-use std::str::FromStr;
+use std::{str::FromStr, convert::Infallible};
 
 use derive_builder::Builder;
 use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
 use serde::{Serialize, Deserialize, Deserializer};
-use strum::{Display, EnumString};
 
 /// List of English adjective words
 pub const ADJECTIVES: &[&str] = &include!(concat!(env!("OUT_DIR"), "/adjectives.rs"));
@@ -118,7 +117,7 @@ impl Default for NumberSeperator {
     }
 }
 impl ::core::str::FromStr for NumberSeperator {
-    type Err = ::strum::ParseError;
+    type Err = Infallible;
     fn from_str(
         s: &str,
     ) -> ::core::result::Result<NumberSeperator, <Self as ::core::str::FromStr>::Err> {
@@ -132,7 +131,7 @@ impl ::core::str::FromStr for NumberSeperator {
 }
 #[allow(clippy::use_self)]
 impl ::core::convert::TryFrom<&str> for NumberSeperator {
-    type Error = ::strum::ParseError;
+    type Error = Infallible;
     fn try_from(
         s: &str,
     ) -> ::core::result::Result<NumberSeperator, <Self as ::core::convert::TryFrom<&str>>::Error>
