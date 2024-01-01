@@ -67,7 +67,7 @@
 #![doc(html_root_url = "https://docs.rs/names/0.14.1-dev")]
 #![deny(missing_docs)]
 
-use std::{str::FromStr, convert::Infallible};
+use core::{fmt, str::FromStr, convert::{Infallible, TryFrom}};
 
 use derive_builder::Builder;
 use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
@@ -116,34 +116,34 @@ impl Default for NumberSeperator {
         NumberSeperator::Dash
     }
 }
-impl ::core::str::FromStr for NumberSeperator {
+impl FromStr for NumberSeperator {
     type Err = Infallible;
     fn from_str(
         s: &str,
-    ) -> ::core::result::Result<NumberSeperator, <Self as ::core::str::FromStr>::Err> {
-        ::core::result::Result::Ok(match s {
+    ) -> Result<NumberSeperator, <Self as FromStr>::Err> {
+        Result::Ok(match s {
             "-" => NumberSeperator::Dash,
             "_" => NumberSeperator::Underscore,
             "" => NumberSeperator::None,
-            _ => return ::core::result::Result::Ok(NumberSeperator::Custom(s.into())),
+            _ => return Result::Ok(NumberSeperator::Custom(s.into())),
         })
     }
 }
 #[allow(clippy::use_self)]
-impl ::core::convert::TryFrom<&str> for NumberSeperator {
+impl TryFrom<&str> for NumberSeperator {
     type Error = Infallible;
     fn try_from(
         s: &str,
-    ) -> ::core::result::Result<NumberSeperator, <Self as ::core::convert::TryFrom<&str>>::Error>
+    ) -> Result<NumberSeperator, <Self as TryFrom<&str>>::Error>
     {
-        ::core::str::FromStr::from_str(s)
+        FromStr::from_str(s)
     }
 }
-impl ::core::fmt::Display for NumberSeperator {
+impl fmt::Display for NumberSeperator {
     fn fmt(
         &self,
-        f: &mut ::core::fmt::Formatter,
-    ) -> ::core::result::Result<(), ::core::fmt::Error> {
+        f: &mut fmt::Formatter,
+    ) -> Result<(), fmt::Error> {
         match *self {
             NumberSeperator::Dash => f.pad("-"),
             NumberSeperator::Underscore => f.pad("_"),
@@ -396,7 +396,7 @@ fn generate_number_with_x_digits(x: usize, rng: &mut ThreadRng) -> usize {
     rng.gen_range(lower_bound..=upper_bound)
 }
 
-fn generate_padded_number_with_x_digits(x: usize, rng: &mut rand::rngs::ThreadRng) -> String {
+fn generate_padded_number_with_x_digits(x: usize, rng: &mut ThreadRng) -> String {
     let number = generate_number_with_x_digits(x, rng);
     format!("{:0>width$}", number, width = x)
 }
